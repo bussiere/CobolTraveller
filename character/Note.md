@@ -7,9 +7,9 @@ COBOL `IKFCBL00` (1972). Envoi et lancement avec `powe`.
 
 ```bash
 cd ~/Workspace/CustomCobol/CobolTraveller
-./upload_character.sh               # dépôt (+ compilation des libs si besoin)
-./upload_character.sh --run         # idem, puis exécution de CHARV1
-./upload_character.sh --force-libs  # recompile toutes les libs même sans changement
+script/upload_character.sh               # dépôt (+ compilation des libs si besoin)
+script/upload_character.sh --run         # idem, puis exécution de CHARV1
+script/upload_character.sh --force-libs  # recompile toutes les libs même sans changement
 ```
 
 Deux listes en tête du script :
@@ -263,7 +263,7 @@ en octets. C'est l'unité qu'une lecture transfère d'un coup. Un module
 
 | Bibliothèque          | BLKSIZE | Origine |
 |-----------------------|---------|---------|
-| `HERC01.TRAVEL.LOAD`  | 19069   | créée par `upload_character.sh` (`--blksize 19069`) |
+| `HERC01.TRAVEL.LOAD`  | 19069   | créée par `script/upload_character.sh` (`--blksize 19069`) |
 | `SYS1.COBLIB`         | 1024    | fournie par TK4- (`powe files list data-set SYS1.COBLIB`) |
 
 19069 octets = capacité d'une piste de disque 3350 : un bloc par piste,

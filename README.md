@@ -1,0 +1,1 @@
+Petit projet pour apprendre cobol et implementer le systeme du jeu de role traveller la version des annees 70/80.

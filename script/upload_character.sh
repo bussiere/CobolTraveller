@@ -2,11 +2,12 @@
 # upload_character.sh : envoie les sources COBOL et les JCL de CobolTraveller
 # dans le conteneur MVS 3.8j TK4- (mainframe-tk4), avec powe.
 #
-#   ./upload_character.sh               upload (+ compile les libs si besoin)
-#   ./upload_character.sh --run         idem, puis lance CHARV1
-#   ./upload_character.sh --force-libs  recompile toutes les libs, meme
-#                                       sans changement (alias : --force-lib)
-#   (options combinables : --run --force-libs)
+#   script/upload_character.sh               upload (+ compile les libs si besoin)
+#   script/upload_character.sh --run         idem, puis lance CHARV1
+#   script/upload_character.sh --force-libs  recompile toutes les libs, meme
+#                                            sans changement (alias : --force-lib)
+#   (options combinables : --run --force-libs ; lancable depuis n'importe
+#    quel repertoire)
 #
 # Deux sortes de fichiers :
 # - les LIBS (sous-programmes, ex. RANDGEN) : compilees dans HERC01.TRAVEL.LOAD
@@ -39,7 +40,9 @@
 # Donc : RANDLIB d'abord, CHARV1 ensuite.
 set -euo pipefail
 
-cd "$(dirname "$0")"
+# Le script est dans script/ ; les chemins de LIBS et PROGRAMMES sont
+# relatifs a la racine du projet, un niveau au-dessus.
+cd "$(dirname "$0")/.."
 
 RUN=0
 FORCE_LIBS=0
@@ -72,6 +75,20 @@ LIBS=(
 PROGRAMMES=(
     "character/characterV1:CHARV1"
 )
+
+# 0. Tous les fichiers locaux existent-ils ? Verifie AVANT de toucher a MVS :
+#    sinon une lib dont le .cbl manque passerait pour "modifiee", son module
+#    serait efface, puis l'upload echouerait.
+manquants=0
+for entree in "${LIBS[@]}" "${PROGRAMMES[@]}"; do
+    for ext in cbl jcl; do
+        if [[ ! -f "${entree%%:*}.$ext" ]]; then
+            echo "[ERREUR] fichier absent : $PWD/${entree%%:*}.$ext" >&2
+            manquants=1
+        fi
+    done
+done
+[[ $manquants == 0 ]] || exit 1
 
 # 1. Le mainframe repond-il ? Verifie lecteur 3505, console 8038, conteneur,
 #    JES2 et MVS. Code 0 seulement si tout est pret.
