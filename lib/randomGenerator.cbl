@@ -1,52 +1,85 @@
        IDENTIFICATION DIVISION.
-       PROGRAM-ID. TIRAGE-ALEATOIRE.
+      * SOUS-PROGRAMME : TIRAGE PSEUDO-ALEATOIRE ENTRE MIN ET MAX.
+      *
+      * PROGRAM-ID = NOM DU MODULE SUR MVS. 8 CARACTERES MAX, SANS
+      * TIRET. CE NOM DOIT ETRE LE MEME A TROIS ENDROITS :
+      *   - ICI (PROGRAM-ID), NOM DU POINT D'ENTREE DU MODULE ;
+      *   - DANS LE CALL 'RANDGEN' DE L'APPELANT ;
+      *   - LE MEMBRE HERC01.TRAVEL.LOAD(RANDGEN) ECRIT PAR
+      *     lib/randomGenerator.jcl, OU L'EDITEUR DE LIENS LE CHERCHE.
+       PROGRAM-ID. RANDGEN.
        AUTHOR. BUSSIERE.
-            
+       ENVIRONMENT DIVISION.
        DATA DIVISION.
+      * WORKING-STORAGE D'UN SOUS-PROGRAMME : GARDEE ENTRE DEUX CALL.
+      * LA GRAINE N'EST DONC LUE DANS L'HORLOGE QU'AU PREMIER APPEL,
+      * PUIS CHAQUE APPEL REPART DU TIRAGE PRECEDENT. SANS CELA, DEUX
+      * APPELS DANS LA MEME SECONDE DONNERAIENT LE MEME NOMBRE.
        WORKING-STORAGE SECTION.
-      * Variables pour recuperer l'heure du système (La Graine / Seed)
-       01  WS-TEMPS.
-           05  WS-HEURE              PIC 99.
-           05  WS-MINUTE             PIC 99.
-           05  WS-SECONDE            PIC 99.
-           05  WS-CENTIEME           PIC 99.
-      
-      * Variables pour l'algorithme mathematique du tirage
-       01  WS-GRAINE                 PIC 9(8)   VALUE ZERO.
-       01  WS-PRODUIT                PIC 9(12)  VALUE ZERO.
-       01  WS-QUOTIENT               PIC 9(8)   VALUE ZERO.
-       01  WS-RESTE                  PIC 9(8)   VALUE ZERO.
-      
-      * Variables de configuration et resultat du tirage (entre 1 et 100
-       01  WS-MIN                    PIC 9(4)   VALUE 1.
-       01  WS-MAX                    PIC 9(4)   VALUE 100.
-       01  WS-PLAGE                  PIC 9(4)   VALUE ZERO.
-       01  WS-RESULTAT               PIC 9(4)   VALUE ZERO.
-      
-       PROCEDURE DIVISION.
+      * 77 se met avant le 01
+       77  WS-INIT                   PIC 9      VALUE 0.
+      * HEURE SYSTEME HHMMSS : LA GRAINE (SEED). LE COMPILATEUR ANS
+      * COBOL DE TK4- (IKFCBL00, 1972) NE CONNAIT PAS ACCEPT ... FROM
+      * TIME (COBOL 74) ; IL FOURNIT LE REGISTRE SPECIAL IBM
+      * TIME-OF-DAY, 6 CHIFFRES, A LA SECONDE PRES.
+       77  WS-TEMPS                  PIC 9(6)   VALUE ZERO.
+      * GRAINE < 2147483647 (10 CHIFFRES) ; GRAINE * 16807 ET
+      * GRAINE * PLAGE (PLAGE <= 9999) TIENNENT EN 15 CHIFFRES.
+       77  WS-GRAINE                 PIC 9(10)  VALUE ZERO.
+       77  WS-PRODUIT                PIC 9(15)  VALUE ZERO.
+       77  WS-QUOTIENT               PIC 9(15)  VALUE ZERO.
+       77  WS-PLAGE                  PIC 9(4)   VALUE ZERO.
+       77  WS-TOURS                  PIC 9(3)   VALUE ZERO.
+      * LINKAGE SECTION : AUCUNE MEMOIRE ICI. CES ZONES SONT CELLES DE
+      * L'APPELANT, PASSEES PAR ADRESSE (CALL ... USING). PAS DE VALUE.
+      * MEME ORDRE ET MEMES PIC QUE DANS L'APPELANT, SINON LES OCTETS
+      * SONT MAL LUS (LES NOMS, EUX, PEUVENT DIFFERER).
+       LINKAGE SECTION.
+       01  LK-MIN                    PIC 9(4).
+       01  LK-MAX                    PIC 9(4).
+       01  LK-RESULTAT               PIC 9(4).
+      * USING : LIE LES ZONES DE L'APPELANT AUX NOMS DE LA LINKAGE.
+       PROCEDURE DIVISION USING LK-MIN LK-MAX LK-RESULTAT.
        0000-MAIN.
-      *   1. Initialisation de la graine avec l'heure courante 
-      *   (evite les doublons)
-           ACCEPT WS-TEMPS FROM TIME.
+      *   1. PREMIER APPEL SEULEMENT : GRAINE = HEURE COURANTE.
+           IF WS-INIT = 0
+               PERFORM 1000-GRAINE.
+      *   2. TIRAGE SUIVANT DE LA SUITE MINSTD.
+           PERFORM 2000-SUIVANT.
+      *   3. RAMENE A LA PLAGE AVEC LES CHIFFRES DE POIDS FORT :
+      *      MIN + (GRAINE * PLAGE) / 2147483647, PARTIE ENTIERE.
+      *      GRAINE / 2147483647 EST UNE FRACTION ENTRE 0 ET 1, QU'ON
+      *      ETIRE SUR LA PLAGE. LE MODULO (GRAINE MODULO PLAGE) NE
+      *      GARDE QUE LES CHIFFRES DE POIDS FAIBLE, LES MOINS
+      *      ALEATOIRES D'UN GENERATEUR CONGRUENTIEL.
+           COMPUTE WS-PLAGE = LK-MAX - LK-MIN + 1.
+           MULTIPLY WS-GRAINE BY WS-PLAGE GIVING WS-PRODUIT.
+           DIVIDE WS-PRODUIT BY 2147483647 GIVING WS-QUOTIENT.
+           ADD WS-QUOTIENT LK-MIN GIVING LK-RESULTAT.
+       0000-FIN.
+      *   RETOUR A L'APPELANT. SURTOUT PAS STOP RUN : IL ARRETERAIT
+      *   TOUT LE PROGRAMME, APPELANT COMPRIS.
+           EXIT PROGRAM.
+       1000-GRAINE.
+           MOVE TIME-OF-DAY TO WS-TEMPS.
            MOVE WS-TEMPS TO WS-GRAINE.
-      
-      *   2. Calcul de la plage de tirage (Max - Min + 1)
-           COMPUTE WS-PLAGE = WS-MAX - WS-MIN + 1.
-      
-      *   3. Generation du nombre pseudo-aleatoire 
-      *  (Methode Minstd / LGC)
-      *   Formule standard : (Graine * 16807) Modulo 2147483647
+      *   GRAINE 0 (MINUIT PILE) : MINSTD RESTERAIT BLOQUE A 0.
+           IF WS-GRAINE = 0
+               MOVE 1 TO WS-GRAINE.
+           MOVE 1 TO WS-INIT.
+      *   ECHAUFFEMENT : 10 A 106 TIRAGES JETES, NOMBRE TIRE DE L'HEURE
+      *   (10 + HEURE MODULO 97). MINSTD EST LINEAIRE : APRES N TOURS,
+      *   GRAINE = HEURE * (16807 PUISSANCE N) MODULO 2147483647. AVEC
+      *   N FIXE, DEUX LANCEMENTS A UNE SECONDE D'ECART DONNENT DES
+      *   TIRAGES DECALES D'UN PAS CONSTANT (+7 PAR SECONDE SUR 1-100
+      *   SANS ECHAUFFEMENT), DONC PREVISIBLES. AVEC N VARIABLE, LE
+      *   MULTIPLICATEUR CHANGE A CHAQUE SECONDE ET LE PAS DISPARAIT.
+           DIVIDE WS-TEMPS BY 97 GIVING WS-QUOTIENT REMAINDER WS-TOURS.
+           ADD 10 TO WS-TOURS.
+           PERFORM 2000-SUIVANT WS-TOURS TIMES.
+       2000-SUIVANT.
+      *   GENERATEUR MINSTD (PARK-MILLER, CONGRUENTIEL LINEAIRE) :
+      *      GRAINE = (GRAINE * 16807) MODULO 2147483647
            MULTIPLY WS-GRAINE BY 16807 GIVING WS-PRODUIT.
-           DIVIDE WS-PRODUIT BY 2147483647 
-              GIVING WS-QUOTIENT REMAINDER WS-GRAINE.
-      
-      *   4. Adaptation du resultat à la plage souhaitee (Min à Max)
-           DIVIDE WS-GRAINE BY WS-PLAGE 
-              GIVING WS-QUOTIENT REMAINDER WS-RESTE.
-           ADD WS-RESTE TO WS-MIN GIVING WS-RESULTAT.
-      
-      *   5. Affichage du resultat
-           DISPLAY "NOMBRE TIRe AU SORT : " WS-RESULTAT.
-      
-           STOP RUN.
-      
+           DIVIDE WS-PRODUIT BY 2147483647
+               GIVING WS-QUOTIENT REMAINDER WS-GRAINE.
