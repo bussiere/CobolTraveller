@@ -1,14 +1,12 @@
 # Traveller : création de personnage et formats de fiche
 
-Règles de **Classic Traveller**, Livre 1 *Characters and Combat* (GDW, 1977,
-édition révisée 1981). Puis deux formats de fiche : EDIFACT (échange) et
+Règles de **Classic Traveller**, d'après *The Traveller Book* (GDW, 1982),
+pages 17 à 29. Puis deux formats de fiche : EDIFACT (échange) et
 fichier plat à taille fixe (lu par COBOL). La traduction EDIFACT ↔ fichier
 plat sera faite en Java avec StAEDI.
 
-> **À vérifier.** Les tables ci-dessous (jets, modificateurs, compétences,
-> gains de fin de service) sont reconstituées de mémoire, sans le livre
-> sous les yeux. Avant de les coder, les comparer au Livre 1 : une valeur
-> peut être fausse ou venir d'une autre édition.
+> Tables vérifiées sur *The Traveller Book* (`CTBOOK2_ocr.pdf`,
+> pages 24 et 25 du livre).
 
 Sommaire :
 
@@ -71,9 +69,9 @@ Six services. Un jet par case, MD cumulables.
 | **Survie**           | 5+      | 6+      | 5+      | 7+      | 5+        | 5+     |
 | MD +2 si             | INT 7+  | END 8+  | EDU 6+  | END 9+  | INT 7+    | INT 9+ |
 | **Commission**       | 10+     | 9+      | 5+      | —       | 4+        | —      |
-| MD +1 si             | SOC 9+  | EDU 7+  | END 7+  | —       | INT 9+    | —      |
+| MD +1 si             | SOC 9+  | EDU 7+  | END 7+  | —       | INT 6+    | —      |
 | **Promotion**        | 8+      | 9+      | 6+      | —       | 10+       | —      |
-| MD +1 si             | EDU 8+  | SOC 8+  | EDU 7+  | —       | INT 10+   | —      |
+| MD +1 si             | EDU 8+  | SOC 8+  | EDU 7+  | —       | INT 9+    | —      |
 | **Rengagement**      | 6+      | 6+      | 7+      | 3+      | 4+        | 5+     |
 
 « — » : impossible dans ce service (pas de grades chez les Scouts et dans
@@ -89,7 +87,8 @@ Un terme dure 4 ans. Dans l'ordre :
 
 1. **Survie** (2D + MD). Échec : le personnage meurt, on recommence.
    *Règle optionnelle* : il est blessé et quitte le service à mi-terme
-   (2 ans seulement), sans autre jet ce terme.
+   (2 ans seulement). Ce demi-terme ne compte pas pour les jets de fin
+   de service.
 2. **Commission** (pas encore officier, service qui en a). Réussite :
    grade 1 et un jet de compétence de plus.
 3. **Promotion** (officier seulement, une fois par terme, possible le terme
@@ -109,7 +108,8 @@ Un terme dure 4 ans. Dans l'ordre :
 Départ volontaire possible à la fin de chaque terme. Pension à partir de
 5 termes (section 9).
 
-*Règle optionnelle* : total des niveaux de compétence limité à INT + EDU.
+Règle générale : total des niveaux de compétence limité à INT + EDU (les
+compétences de niveau 0 ne comptent pas).
 
 ## 5. Grades et compétences automatiques
 
@@ -159,7 +159,7 @@ Une compétence déjà possédée monte d'un niveau (Pilot-1 → Pilot-2).
 
 | 1D | PD        | SS        | AE         | AE2 (EDU 8+) |
 |----|-----------|-----------|------------|--------------|
-| 1  | +1 STR    | Vehicle   | Vehicle    | Medical      |
+| 1  | +1 STR    | ATV       | Vehicle    | Medical      |
 | 2  | +1 DEX    | Vacc Suit | Mechanical | Tactics      |
 | 3  | +1 END    | Blade Cbt | Electronic | Tactics      |
 | 4  | Gambling  | Gun Cbt   | Tactics    | Computer     |
@@ -170,7 +170,7 @@ Une compétence déjà possédée monte d'un niveau (Pilot-1 → Pilot-2).
 
 | 1D | PD       | SS        | AE         | AE2 (EDU 8+) |
 |----|----------|-----------|------------|--------------|
-| 1  | +1 STR   | Vehicle   | Vehicle    | Medical      |
+| 1  | +1 STR   | ATV       | Vehicle    | Medical      |
 | 2  | +1 DEX   | Air/Raft  | Mechanical | Tactics      |
 | 3  | +1 END   | Gun Cbt   | Electronic | Tactics      |
 | 4  | Gambling | Fwd Obsvr | Tactics    | Computer     |
@@ -181,7 +181,7 @@ Une compétence déjà possédée monte d'un niveau (Pilot-1 → Pilot-2).
 
 | 1D | PD      | SS         | AE         | AE2 (EDU 8+) |
 |----|---------|------------|------------|--------------|
-| 1  | +1 STR  | Vehicle    | Vehicle    | Medical      |
+| 1  | +1 STR  | Air/Raft   | Vehicle    | Medical      |
 | 2  | +1 DEX  | Vacc Suit  | Mechanical | Navigation   |
 | 3  | +1 END  | Mechanical | Electronic | Engineering  |
 | 4  | +1 INT  | Navigation | Jack-o-T   | Computer     |
@@ -248,19 +248,24 @@ choisit une spécialité.
   Bayonet, Spear, Halberd, Pike, Cudgel.
 - **GUN COMBAT** : Body Pistol, Auto Pistol, Revolver, Carbine, Rifle,
   Auto Rifle, Shotgun, SMG, Laser Carbine, Laser Rifle.
-- **VEHICLE** : Air/Raft, ATV, Aircraft (Helicopter, Propeller, Jet),
-  Watercraft (Small, Large, Hovercraft, Submersible).
+- **VEHICLE** : Aircraft (Prop-driven Fixed Wing, Jet-driven Fixed Wing,
+  Helicopter), Grav Vehicle, Tracked Vehicle, Wheeled Vehicle, Watercraft
+  (Large, Small, Hovercraft, Submersible). Air/Raft et ATV sont des
+  compétences à part.
 
 ## 8. Vieillissement
 
-À la fin du 4e terme (34 ans) puis de chaque terme. Un jet 2D par ligne :
-si le jet est **inférieur ou égal** au seuil, la caractéristique baisse.
+À la fin du 4e terme (34 ans) puis de chaque terme. Un jet de sauvegarde
+2D par caractéristique : s'il est **raté**, la caractéristique baisse.
+Entre parenthèses, le jet à réussir.
 
 | Termes (âge)        | STR       | DEX       | END       | INT       |
 |---------------------|-----------|-----------|-----------|-----------|
-| 4 à 7 (34 à 46)     | -1 si 8-  | -1 si 7-  | -1 si 8-  | —         |
-| 8 à 11 (50 à 62)    | -1 si 9-  | -1 si 8-  | -1 si 9-  | —         |
-| 12 et + (66 et +)   | -2 si 9-  | -2 si 9-  | -2 si 9-  | -1 si 9-  |
+| 4 à 7 (34 à 46)     | -1 (8+)   | -1 (7+)   | -1 (8+)   | —         |
+| 8 à 11 (50 à 62)    | -1 (9+)   | -1 (8+)   | -1 (9+)   | —         |
+| 12 et + (66 et +)   | -2 (9+)   | -2 (9+)   | -2 (9+)   | -1 (9+)   |
+
+EDU et SOC ne changent pas avec l'âge.
 
 Une caractéristique tombée à 0 : crise de vieillissement. Jet 8+ pour
 survivre ; elle remonte alors à 1.
@@ -306,7 +311,7 @@ Les tables vont jusqu'à 7 (1D + MD).
 
 ### Pension
 
-À partir de 5 termes (pas pour les Scouts), par an : 4 000 Cr à 5 termes,
+À partir de 5 termes (pas pour les Scouts ni Other), par an : 4 000 Cr à 5 termes,
 6 000 à 6, 8 000 à 7, 10 000 à 8, puis +2 000 par terme.
 
 ## 10. Format EDIFACT
