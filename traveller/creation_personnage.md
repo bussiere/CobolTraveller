@@ -40,13 +40,13 @@ jet vaut 8 ou plus ; **MD** = modificateur de dé, ajouté au jet.
 
 Six caractéristiques, chacune tirée sur **2D** (de 2 à 12) :
 
-| Code | Nom          | Sens |
-|------|--------------|------|
-| STR  | Strength     | force |
-| DEX  | Dexterity    | dextérité, coordination |
-| END  | Endurance    | résistance |
-| INT  | Intelligence | intelligence |
-| EDU  | Education    | instruction |
+| Code | Nom             | Sens                         |
+|------|-----------------|------------------------------|
+| STR  | Strength        | force                        |
+| DEX  | Dexterity       | dextérité, coordination      |
+| END  | Endurance       | résistance                   |
+| INT  | Intelligence    | intelligence                 |
+| EDU  | Education       | instruction                  |
 | SOC  | Social Standing | rang social (11+ : noblesse) |
 
 **UPP** (*Universal Personality Profile*) : les six valeurs écrites dans cet

@@ -1,0 +1,17 @@
+Initialized native services in: /home/ppenetbertdelabuss01/.gradle/native
+Initialized jansi services in: /home/ppenetbertdelabuss01/.gradle/native
+Found daemon DaemonInfo{pid=2511058, address=[678463b4-1fed-44fb-9272-ff7059b82bf4 port:40341, addresses:[/127.0.0.1]], state=Idle, lastBusy=1791367405101, context=DefaultDaemonContext[uid=7001679d-1747-47a2-87aa-b66e05d405f7,javaHome=/usr/lib/jvm/java-21-openjdk-amd64,javaVersion=21,javaVendor=Ubuntu,daemonRegistryDir=/home/ppenetbertdelabuss01/.gradle/daemon,pid=2511058,idleTimeout=10800000,priority=NORMAL,applyInstrumentationAgent=true,nativeServicesMode=ENABLED,daemonOpts=-XX:MaxMetaspaceSize=384m,-XX:+HeapDumpOnOutOfMemoryError,-Xms256m,-Xmx512m,-Dfile.encoding=UTF-8,-Duser.country=FR,-Duser.language=fr,-Duser.variant]} however its context does not match the desired criteria.
+At least one daemon option is different.
+Wanted: DaemonRequestContext{jvmCriteria=/usr/lib/jvm/java-21-openjdk-amd64 (no Daemon JVM specified, using current Java home), daemonOpts=[-Dfile.encoding=UTF-8, -Duser.country=FR, -Duser.language=fr, -Duser.variant], applyInstrumentationAgent=true, nativeServicesMode=ENABLED, priority=NORMAL}
+Actual: DefaultDaemonContext[uid=7001679d-1747-47a2-87aa-b66e05d405f7,javaHome=/usr/lib/jvm/java-21-openjdk-amd64,javaVersion=21,javaVendor=Ubuntu,daemonRegistryDir=/home/ppenetbertdelabuss01/.gradle/daemon,pid=2511058,idleTimeout=10800000,priority=NORMAL,applyInstrumentationAgent=true,nativeServicesMode=ENABLED,daemonOpts=-XX:MaxMetaspaceSize=384m,-XX:+HeapDumpOnOutOfMemoryError,-Xms256m,-Xmx512m,-Dfile.encoding=UTF-8,-Duser.country=FR,-Duser.language=fr,-Duser.variant]
+
+  Looking for a different daemon...
+The client will now receive all logging from the daemon (pid: 2522293). The daemon log file: /home/ppenetbertdelabuss01/.gradle/daemon/9.8.0/daemon-2522293.out.log
+Starting 16th build in daemon [uptime: 19 mins 12.463 secs, performance: 99%, GC rate: 0.00/s, heap usage: 0% of 3.8 GiB]
+Using 20 worker leases.
+Operational build model parameters: {cachingModelBuilding=false, configurationCache=false, configurationCacheDisabledReason=null, configurationCacheParallelLoad=false, configurationCacheParallelStore=false, configureOnDemand=false, invalidateCoupledProjects=false, isolatedProjects=false, isolatedProjectsDiagnostics=false, isolatedProjectsDangerouslyIgnoreProblems=false, modelAsProjectDependency=false, modelBuilding=false, parallelModelBuilding=false, parallelProjectConfiguration=false, parallelProjectExecution=false, vintage=true}
+Now considering [/home/ppenetbertdelabuss01/Workspace/CustomCobol/coboltraveller/javaedi] as hierarchies to watch
+Watching the file system is configured to be enabled if available
+File system watching is active
+Starting Build
+Resolved plugin [id: 'org.gradle.toolchains.foojay-resolver-convention', version: '1.0.0']
