@@ -364,3 +364,12 @@ JEAN        -> CHAR-SNAME
 ```bash
 powe jobs view spool-file-by-id CHARV1 | grep -E 'IKF[0-9]+I-[EWCD]|IEW'
 ```
+
+
+Il faut mettre les copy book avant dans le jcl 
+
+
+//* -------------------------------------------------------------
+//* AJOUT DE LA BIBLIOTHEQUE DE COPYBOOKS POUR LE COMPILATEUR
+//* -------------------------------------------------------------
+//COB.SYSLIB DD DSN=HERC01.TRAVEL.COPYLIB,DISP=SHR

@@ -13,7 +13,12 @@
 //*            copie dans le module CHARTRA (appel statique).
 //*  3. GO   : le module est complet, rien n'est cherche a l'execution.
 //*            Modifier RANDGEN oblige donc a relancer ce job.
-//COB      EXEC COBUCLG
+//* Rajout de cette ligne pour le copybook : 
+//COB      EXEC COBUCLG,PARM.COB='LOAD,SUPMAP,LIB,SIZE=2048K,BUF=1024K'
+//* -------------------------------------------------------------
+//* AJOUT DE LA BIBLIOTHEQUE DE COPYBOOKS POUR LE COMPILATEUR
+//* -------------------------------------------------------------
+//COB.SYSLIB DD DSN=HERC01.TRAVEL.COPYLIB,DISP=SHR
 //COB.SYSIN DD DSN=HERC01.TRAVEL.CBL(CHARV1),DISP=SHR
 //* SYSLIB de la procedure = SYS1.COBLIB seul (runtime COBOL).
 //* Surcharge : notre bibliotheque d'abord, puis SYS1.COBLIB en
@@ -21,7 +26,6 @@
 //* grand BLKSIZE doit etre en tete (LOAD 19069, COBLIB 1024).
 //* on peut aussi faire DCB=BLKSIZE=19069.
 //LKED.SYSLIB DD DSN=HERC01.TRAVEL.LOAD,DISP=SHR
-//            DD DSN=HERC01.TRAVEL.COPYLIB,DISP=SHR
 //            DD DSN=SYS1.COBLIB,DISP=SHR
 //GO.SYSPRINT DD SYSOUT=*
 //GO.SYSOUT   DD SYSOUT=*

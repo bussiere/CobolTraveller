@@ -79,7 +79,7 @@ PROGRAMMES=(
     "character/characterV1:CHARV1"
 )
 COPYBOOK=(
-    "copyBook/skills:SKILL"
+    "copyBook/skills:SKILLS"
 )
 
 # 0. Tous les fichiers locaux existent-ils ? Verifie AVANT de toucher a MVS :
