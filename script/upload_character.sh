@@ -46,10 +46,12 @@ cd "$(dirname "$0")/.."
 
 RUN=0
 FORCE_LIBS=0
+FORCE_BOOK=0
 for arg in "$@"; do
     case "$arg" in
         --run)                     RUN=1 ;;
         --force-libs|--force-lib)  FORCE_LIBS=1 ;;
+        --force-books|--force-books)  FORCE_BOOK=1 ;;
         *) echo "usage : $0 [--run] [--force-libs]" >&2; exit 1 ;;
     esac
 done
@@ -64,6 +66,7 @@ PREFIXE="HERC01.TRAVEL"
 PDS_CBL="$PREFIXE.CBL"
 PDS_JCL="$PREFIXE.JCL"
 PDS_LOAD="$PREFIXE.LOAD"
+PDS_COPY="$PREFIXE.COPYLIB"
 
 # Chaque entree : "chemin sans extension:MEMBRE". Le .cbl va dans
 # HERC01.TRAVEL.CBL(MEMBRE), le .jcl dans HERC01.TRAVEL.JCL(MEMBRE).
@@ -74,6 +77,9 @@ LIBS=(
 )
 PROGRAMMES=(
     "character/characterV1:CHARV1"
+)
+COPYBOOK=(
+    "copyBook/skills:SKILL"
 )
 
 # 0. Tous les fichiers locaux existent-ils ? Verifie AVANT de toucher a MVS :
@@ -118,6 +124,7 @@ creer() {
 creer "$PDS_CBL"
 creer "$PDS_JCL"
 creer "$PDS_LOAD" --recfm U --blksize 19069
+creer "$PDS_COPY" --recfm U --blksize 19069
 
 # upload LOCAL CIBLE : le fichier est envoye en cartes de 80 colonnes dans un
 # job IEBGENER (DD DATA,DLM=@@) ; le membre est cree ou remplace.
@@ -185,7 +192,44 @@ for entree in "${LIBS[@]}"; do
     A_COMPILER+=("$membre")
 done
 
-# 5. PROGRAMMES : toujours renvoyes, sans test. Leur JCL les recompile a
+# 5. COPYBOOK : en cours
+#
+for entree in "${COPYBOOK[@]}"; do
+    base="${entree%%:*}"
+    membre="${entree##*:}"
+    echo "== CopyBook $membre a jour ?"
+
+    # 5a. Tests, AVANT l'upload (qui ecraserait les copies sur MVS) :
+    #     module present, source identique, CPY identique (une option de
+    #     compilation changee doit aussi recompiler).
+    present=0
+    [[ "$modules" == *" $membre "* ]] && present=1
+    if [[ $present == 0 ]]; then
+        echo "   copybook $membre absent"
+    elif ! identique "$base.cpy" "$PDS_COPY($membre)"; then
+        echo "   source $membre modifiee"
+    elif [[ $FORCE_BOOK == 1 ]]; then
+        echo "   a jour, mais --force-libs : recompilation"
+    else
+        echo "   oui : pas de recompilation"
+        continue
+    fi
+
+    # 5b. Effacer l'ancien copybook AVANT de deposer la nouvelle source. Si
+    #     l'upload ou la compilation echoue (ou Ctrl-C), le module reste
+    #     absent et le prochain lancement recompile. Sans cela, source neuve
+    #     + vieux module passeraient pour "a jour".
+    #     Seulement si le copybook existe : "delete" d'un MEMBRE absent echoue
+    #     (code 3), contrairement a celui d'un dataset absent.
+    if [[ $present == 1 ]]; then
+        echo "== Effacement de $PDS_LOAD($membre)"
+        "${POWE[@]}" files delete data-set "$PDS_COPY($membre)" > /dev/null
+    fi
+    upload "$base.cpy" "$PDS_COPY($membre)"
+done
+
+
+# 6. PROGRAMMES : toujours renvoyes, sans test. Leur JCL les recompile a
 #    chaque soumission, et recopie au passage la version courante des libs.
 for entree in "${PROGRAMMES[@]}"; do
     base="${entree%%:*}"
@@ -194,17 +238,17 @@ for entree in "${PROGRAMMES[@]}"; do
     upload "$base.jcl" "$PDS_JCL($membre)"
 done
 
-# 6. Controle : liste les membres de chaque PDS (LISTDS ... MEMBERS).
+# 7. Controle : liste les membres de chaque PDS (LISTDS ... MEMBERS).
 echo "== Membres"
 for pds in "$PDS_CBL" "$PDS_JCL"; do
     echo "$pds : $("${POWE[@]}" files list all-members "$pds" | grep '^Membres')"
 done
 
-# 7. Soumet les JCL ranges dans le PDS (comme SUBMIT sous TSO).
+# 8. Soumet les JCL ranges dans le PDS (comme SUBMIT sous TSO).
 #    --watch suit chaque job jusqu'a la fin et sort en code 3 si une etape
 #    a un RC >= 8 (set -e arrete alors le script).
 
-# 7a. Libs a recompiler : COB (IKFCBL00) + LKED (IEWL) vers
+# 8a. Libs a recompiler : COB (IKFCBL00) + LKED (IEWL) vers
 #     HERC01.TRAVEL.LOAD. Fait meme sans --run : source sur MVS et module
 #     restent toujours d'accord. Avant les programmes, qui les relient.
 for membre in "${A_COMPILER[@]}"; do
@@ -237,7 +281,7 @@ if debut is not None:
 '
 }
 
-# 7b. Programmes : COB, LKED (relie les libs), GO (execution).
+# 8b. Programmes : COB, LKED (relie les libs), GO (execution).
 if [[ $RUN == 1 ]]; then
     rc=0
     for entree in "${PROGRAMMES[@]}"; do
