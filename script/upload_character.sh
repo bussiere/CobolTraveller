@@ -6,6 +6,8 @@
 #   script/upload_character.sh --run         idem, puis lance CHARV1
 #   script/upload_character.sh --force-libs  recompile toutes les libs, meme
 #                                            sans changement (alias : --force-lib)
+#   script/upload_character.sh --force-books renvoie toutes les copybooks, meme
+#                                            sans changement (alias : --force-book)
 #   (options combinables : --run --force-libs ; lancable depuis n'importe
 #    quel repertoire)
 #
@@ -51,8 +53,8 @@ for arg in "$@"; do
     case "$arg" in
         --run)                     RUN=1 ;;
         --force-libs|--force-lib)  FORCE_LIBS=1 ;;
-        --force-books|--force-books)  FORCE_BOOK=1 ;;
-        *) echo "usage : $0 [--run] [--force-libs]" >&2; exit 1 ;;
+        --force-books|--force-book) FORCE_BOOK=1 ;;
+        *) echo "usage : $0 [--run] [--force-libs] [--force-books]" >&2; exit 1 ;;
     esac
 done
 
@@ -94,6 +96,12 @@ for entree in "${LIBS[@]}" "${PROGRAMMES[@]}"; do
         fi
     done
 done
+for entree in "${COPYBOOK[@]}"; do
+    if [[ ! -f "${entree%%:*}.cpy" ]]; then
+        echo "[ERREUR] fichier absent : $PWD/${entree%%:*}.cpy" >&2
+        manquants=1
+    fi
+done
 [[ $manquants == 0 ]] || exit 1
 
 # 1. Le mainframe repond-il ? Verifie lecteur 3505, console 8038, conteneur,
@@ -124,7 +132,21 @@ creer() {
 creer "$PDS_CBL"
 creer "$PDS_JCL"
 creer "$PDS_LOAD" --recfm U --blksize 19069
-creer "$PDS_COPY" --recfm U --blksize 19069
+
+# COPYLIB : du TEXTE source lu par le compilateur (COB.SYSLIB), donc FB 80
+# comme HERC01.TRAVEL.CBL, pas U (format des modules). Une COPYLIB creee en
+# U par une ancienne version du script est effacee puis recreee : son
+# contenu (copybooks) est renvoye a l'etape 5.
+if [[ " $existants " == *" $PDS_COPY "* ]]; then
+    recfm=$("${POWE[@]}" --rfj files list data-set "$PDS_COPY" \
+        | python3 -c 'import json,sys; print(json.load(sys.stdin)["data"].get("attributes", {}).get("recfm", ""))')
+    if [[ "$recfm" != FB* ]]; then
+        echo "== $PDS_COPY en RECFM=$recfm (attendu FB) : effacement"
+        "${POWE[@]}" files delete data-set "$PDS_COPY" > /dev/null
+        existants="${existants/$PDS_COPY/}"
+    fi
+fi
+creer "$PDS_COPY"
 
 # upload LOCAL CIBLE : le fichier est envoye en cartes de 80 colonnes dans un
 # job IEBGENER (DD DATA,DLM=@@) ; le membre est cree ou remplace.
@@ -139,12 +161,25 @@ upload() {
 
 # identique LOCAL DSN : la copie sur MVS est-elle identique au fichier local ?
 # "download data-set" : IEBGENER vers le spool, recopie dans un fichier
-# local, puis cmp octet par octet. Membre absent : download sort en code 3,
-# cmp echoue.
+# local, puis comparaison. Membre absent : download sort en code 3, la
+# comparaison echoue.
+# Le texte relu de MVS n'a plus d'espaces en fin de ligne et finit par un
+# saut de ligne. On normalise donc les deux cotes avant de comparer : espaces
+# de fin de ligne et lignes vides finales retires.
 identique() {
     rm -f "$TMP/copie"
     "${POWE[@]}" files download data-set "$2" -f "$TMP/copie" > /dev/null 2>&1 || true
-    cmp -s "$1" "$TMP/copie"
+    [[ -f "$TMP/copie" ]] || return 1
+    python3 -c '
+import sys
+def texte(chemin):
+    with open(chemin, encoding="latin-1") as f:
+        return [l.rstrip() for l in f.read().splitlines()]
+a, b = texte(sys.argv[1]), texte(sys.argv[2])
+while a and not a[-1]: a.pop()
+while b and not b[-1]: b.pop()
+sys.exit(a != b)
+' "$1" "$TMP/copie"
 }
 
 # 4. LIBS : recompiler seulement si besoin.
@@ -192,39 +227,32 @@ for entree in "${LIBS[@]}"; do
     A_COMPILER+=("$membre")
 done
 
-# 5. COPYBOOK : en cours
-#
+# 5. COPYBOOK : texte inclus par COPY a la compilation, rien a compiler.
+#    Renvoyees seulement si absentes de COPYLIB ou modifiees (ou
+#    --force-books). Les PROGRAMMES etant recompiles a chaque soumission,
+#    ils prennent toujours la version courante.
+#    Membres deja dans COPYLIB : liste lue une seule fois.
+copies=" $("${POWE[@]}" --rfj files list all-members "$PDS_COPY" \
+    | python3 -c 'import json,sys; print(" ".join(json.load(sys.stdin)["data"].get("members", [])))') "
+
 for entree in "${COPYBOOK[@]}"; do
     base="${entree%%:*}"
     membre="${entree##*:}"
     echo "== CopyBook $membre a jour ?"
 
-    # 5a. Tests, AVANT l'upload (qui ecraserait les copies sur MVS) :
-    #     module present, source identique, CPY identique (une option de
-    #     compilation changee doit aussi recompiler).
-    present=0
-    [[ "$modules" == *" $membre "* ]] && present=1
-    if [[ $present == 0 ]]; then
-        echo "   copybook $membre absent"
+    # 5a. Present dans COPYLIB et identique au fichier local ?
+    if [[ "$copies" != *" $membre "* ]]; then
+        echo "   copybook $membre absente"
     elif ! identique "$base.cpy" "$PDS_COPY($membre)"; then
-        echo "   source $membre modifiee"
+        echo "   copybook $membre modifiee"
     elif [[ $FORCE_BOOK == 1 ]]; then
-        echo "   a jour, mais --force-libs : recompilation"
+        echo "   a jour, mais --force-books : renvoi"
     else
-        echo "   oui : pas de recompilation"
+        echo "   oui : pas de renvoi"
         continue
     fi
 
-    # 5b. Effacer l'ancien copybook AVANT de deposer la nouvelle source. Si
-    #     l'upload ou la compilation echoue (ou Ctrl-C), le module reste
-    #     absent et le prochain lancement recompile. Sans cela, source neuve
-    #     + vieux module passeraient pour "a jour".
-    #     Seulement si le copybook existe : "delete" d'un MEMBRE absent echoue
-    #     (code 3), contrairement a celui d'un dataset absent.
-    if [[ $present == 1 ]]; then
-        echo "== Effacement de $PDS_LOAD($membre)"
-        "${POWE[@]}" files delete data-set "$PDS_COPY($membre)" > /dev/null
-    fi
+    # 5b. L'upload cree ou remplace le membre : pas d'effacement prealable.
     upload "$base.cpy" "$PDS_COPY($membre)"
 done
 
@@ -240,7 +268,7 @@ done
 
 # 7. Controle : liste les membres de chaque PDS (LISTDS ... MEMBERS).
 echo "== Membres"
-for pds in "$PDS_CBL" "$PDS_JCL"; do
+for pds in "$PDS_CBL" "$PDS_JCL" "$PDS_COPY"; do
     echo "$pds : $("${POWE[@]}" files list all-members "$pds" | grep '^Membres')"
 done
 
